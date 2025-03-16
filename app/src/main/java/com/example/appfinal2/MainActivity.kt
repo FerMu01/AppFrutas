@@ -1,18 +1,25 @@
 package com.example.appfinal2
 
-import android.app.AlertDialog
 import android.os.AsyncTask
 import android.os.Bundle
 import android.view.ContextMenu
 import android.view.MenuItem
 import android.view.View
-import android.widget.EditText
+import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.BarData
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.github.mikephil.charting.animation.Easing
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import org.json.JSONArray
 import java.net.HttpURLConnection
 import java.net.URL
@@ -22,48 +29,48 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var fruitAdapter: FruitAdapter
 
-    // Variable para saber qué fruta se ha pulsado (long-click) en el RecyclerView
+    // Para menú contextual
     var selectedFruit: Fruit? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Configuración del layout y edge-to-edge
         setContentView(R.layout.activity_main)
+
+        // Edge-to-edge
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
-        // Configuración del RecyclerView
+        // RecyclerView
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
-
-        // Pasamos 'this' al adapter para manejar el menú contextual
         fruitAdapter = FruitAdapter(emptyList(), this)
         recyclerView.adapter = fruitAdapter
 
-        // Carga inicial de datos desde la base de datos
+        // Carga inicial
         LoadFruitsFromDatabaseTask().execute()
+
+        // Botón para ver el gráfico
+        val btnShowChart = findViewById<Button>(R.id.btnShowChart)
+        btnShowChart.setOnClickListener {
+            GetTop3FruitsTask().execute()
+        }
     }
 
-    // ---------------------------------------------------------------------------------------------
-    // CARGA DE DATOS (AsyncTasks)
-    // ---------------------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Carga de datos (AsyncTasks)
+    // -------------------------------------------------------------------------
 
-    /**
-     * Carga las frutas de la base de datos.
-     * Si no hay datos, se llama a la API.
-     */
     inner class LoadFruitsFromDatabaseTask : AsyncTask<Void, Void, List<Fruit>>() {
         override fun doInBackground(vararg params: Void?): List<Fruit> {
             val db = AppDatabase.getDatabase(applicationContext)
-            return db.fruitDao().getAllFruits()  // Consulta con ORDER BY apiIndex ASC
+            return db.fruitDao().getAllFruits()
         }
 
         override fun onPostExecute(result: List<Fruit>) {
             if (result.isEmpty()) {
-                // Si no hay datos, obtenemos de la API
                 FetchFruitsTask().execute()
             } else {
                 fruitAdapter.updateData(result)
@@ -71,9 +78,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Obtiene la lista de frutas desde la API Fruityvice.
-     */
     inner class FetchFruitsTask : AsyncTask<Void, Void, List<Fruit>>() {
         override fun doInBackground(vararg params: Void?): List<Fruit> {
             val fruits = mutableListOf<Fruit>()
@@ -130,14 +134,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Inserta la lista de frutas en Room y luego obtiene todos los registros.
-     */
     inner class InsertFruitsTask : AsyncTask<List<Fruit>, Void, List<Fruit>>() {
         override fun doInBackground(vararg params: List<Fruit>): List<Fruit> {
-            val fruits = params[0]
             val db = AppDatabase.getDatabase(applicationContext)
-            db.fruitDao().insertFruits(fruits)
+            db.fruitDao().insertFruits(params[0])
             return db.fruitDao().getAllFruits()
         }
 
@@ -147,113 +147,84 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------------------------------------------------------------------------------------
-    // MENÚ CONTEXTUAL
-    // ---------------------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Top 3 frutas con más calorías (AsyncTask + BottomSheet)
+    // -------------------------------------------------------------------------
+
+    inner class GetTop3FruitsTask : AsyncTask<Void, Void, List<Fruit>>() {
+        override fun doInBackground(vararg params: Void?): List<Fruit> {
+            val db = AppDatabase.getDatabase(applicationContext)
+            return db.fruitDao().getTop3ByCalories() // ORDER BY calories DESC LIMIT 3
+        }
+
+        override fun onPostExecute(result: List<Fruit>) {
+            if (result.isEmpty()) {
+                Toast.makeText(this@MainActivity, "No hay frutas en la base de datos", Toast.LENGTH_SHORT).show()
+            } else {
+                showTop3Chart(result)
+            }
+        }
+    }
 
     /**
-     * Maneja las acciones del menú contextual inflado en el adapter.
+     * Muestra un BottomSheetDialog con un BarChart de las 3 frutas con más calorías.
+     * Incluye animación en el chart.
      */
+    private fun showTop3Chart(fruits: List<Fruit>) {
+        // Creamos el BottomSheet
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_chart, null)
+        bottomSheetDialog.setContentView(view)
+
+        val barChart = view.findViewById<BarChart>(R.id.barChart)
+
+        // Lista de BarEntry (x, y) y lista de labels
+        val entries = ArrayList<BarEntry>()
+        val labels = ArrayList<String>()
+
+        for ((index, fruit) in fruits.withIndex()) {
+            entries.add(BarEntry(index.toFloat(), fruit.nutritions.calories.toFloat()))
+            labels.add(fruit.name)
+        }
+
+        val dataSet = BarDataSet(entries, "Calorías")
+        // Colores ejemplo (ajusta a tus recursos)
+        dataSet.setColors(
+            resources.getColor(R.color.purple_200),
+            resources.getColor(R.color.purple_500),
+            resources.getColor(R.color.purple_700)
+        )
+
+        val barData = BarData(dataSet)
+        barChart.data = barData
+        barChart.description.isEnabled = false
+        barChart.setFitBars(true)
+
+        // Eje X con nombres
+        val xAxis = barChart.xAxis
+        xAxis.valueFormatter = IndexAxisValueFormatter(labels)
+        xAxis.position = XAxis.XAxisPosition.BOTTOM
+        xAxis.granularity = 1f
+        xAxis.labelCount = labels.size
+        xAxis.isGranularityEnabled = true
+
+        // ANIMACIÓN del chart
+        barChart.animateY(1500, Easing.EaseInOutQuad)
+
+        // Refrescar
+        barChart.invalidate()
+
+        // Mostrar el BottomSheet
+        bottomSheetDialog.show()
+    }
+
+    // -------------------------------------------------------------------------
+    // MENÚ CONTEXTUAL (opcional)
+    // -------------------------------------------------------------------------
     override fun onContextItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.option_add -> {
-                // Agrega una nueva fruta manualmente
-                showAddFruitDialog()
-                true
-            }
-            R.id.option_delete -> {
-                // Elimina la fruta seleccionada (guardada en selectedFruit)
-                selectedFruit?.let {
-                    DeleteFruitTask().execute(it)
-                }
-                true
-            }
+            // Ejemplo
             else -> super.onContextItemSelected(item)
-        }
-    }
-
-    /**
-     * Muestra un diálogo para agregar una fruta personalizada
-     * (nombre, calorías, grasas, azúcar y carbohidratos).
-     */
-    private fun showAddFruitDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Agregar Nueva Fruta")
-
-        val view = layoutInflater.inflate(R.layout.dialog_add_fruit, null)
-        builder.setView(view)
-
-        // Referencias a los EditText
-        val editTextName = view.findViewById<EditText>(R.id.editTextName)
-        val editTextCalories = view.findViewById<EditText>(R.id.editTextCalories)
-        val editTextFat = view.findViewById<EditText>(R.id.editTextFat)
-        val editTextSugar = view.findViewById<EditText>(R.id.editTextSugar)
-        val editTextCarbohydrates = view.findViewById<EditText>(R.id.editTextCarbohydrates)
-
-        builder.setPositiveButton("Agregar") { _, _ ->
-            // Convertir los valores de los EditText
-            val name = editTextName.text.toString().trim()
-            val calories = editTextCalories.text.toString().toIntOrNull() ?: 0
-            val fat = editTextFat.text.toString().toDoubleOrNull() ?: 0.0
-            val sugar = editTextSugar.text.toString().toDoubleOrNull() ?: 0.0
-            val carbs = editTextCarbohydrates.text.toString().toDoubleOrNull() ?: 0.0
-
-            if (name.isNotEmpty()) {
-                // Creamos la nueva fruta con apiIndex = -1
-                val newFruit = Fruit(
-                    id = 0, // Un ID ficticio
-                    name = name,
-                    family = "Desconocida",
-                    order = "Desconocida",
-                    genus = "Desconocido",
-                    apiIndex = -1, // <--- Menor que 0 para que salga arriba
-                    nutritions = Nutrition(
-                        carbohydrates = carbs,
-                        protein = 0.0, // Podrías usar otro EditText si quieres
-                        fat = fat,
-                        calories = calories,
-                        sugar = sugar
-                    )
-                )
-                InsertSingleFruitTask().execute(newFruit)
-            } else {
-                Toast.makeText(this, "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        builder.setNegativeButton("Cancelar", null)
-        builder.show()
-    }
-
-    /**
-     * AsyncTask para insertar UNA fruta (la que el usuario agrega manualmente).
-     */
-    inner class InsertSingleFruitTask : AsyncTask<Fruit, Void, List<Fruit>>() {
-        override fun doInBackground(vararg params: Fruit): List<Fruit> {
-            val db = AppDatabase.getDatabase(applicationContext)
-            db.fruitDao().insertFruits(listOf(params[0]))
-            return db.fruitDao().getAllFruits()
-        }
-
-        override fun onPostExecute(result: List<Fruit>) {
-            fruitAdapter.updateData(result)
-            Toast.makeText(this@MainActivity, "Fruta agregada", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    /**
-     * AsyncTask para eliminar la fruta seleccionada.
-     */
-    inner class DeleteFruitTask : AsyncTask<Fruit, Void, List<Fruit>>() {
-        override fun doInBackground(vararg params: Fruit): List<Fruit> {
-            val db = AppDatabase.getDatabase(applicationContext)
-            db.fruitDao().deleteFruit(params[0])
-            return db.fruitDao().getAllFruits()
-        }
-
-        override fun onPostExecute(result: List<Fruit>) {
-            fruitAdapter.updateData(result)
-            Toast.makeText(this@MainActivity, "Fruta eliminada", Toast.LENGTH_SHORT).show()
         }
     }
 }

@@ -3,7 +3,6 @@ package com.example.appfinal2
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-
 @Entity(tableName = "fruits")
 data class Fruit(
     @PrimaryKey val id: Int,
@@ -11,7 +10,7 @@ data class Fruit(
     val family: String,
     val order: String,
     val genus: String,
-    val apiIndex: Int,                // Campo para respetar el orden de la API
+    val apiIndex: Int,
     @Embedded val nutritions: Nutrition
 )
 

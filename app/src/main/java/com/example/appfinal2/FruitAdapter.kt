@@ -4,6 +4,7 @@ import android.view.ContextMenu
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AlphaAnimation
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
@@ -22,20 +23,14 @@ class FruitAdapter(
         val textViewCarbohydrates: TextView = itemView.findViewById(R.id.textViewCarbohydrates)
 
         init {
-            // Registramos el listener de contexto en el ViewHolder
             itemView.setOnCreateContextMenuListener(this)
         }
 
-        // Este método se llama cuando se crea el menú contextual para ESTE itemView
         override fun onCreateContextMenu(menu: ContextMenu?, v: View?, menuInfo: ContextMenu.ContextMenuInfo?) {
-            // Inflamos el menú
             activity.menuInflater.inflate(R.menu.context_menu, menu)
-
-            // Guardamos en la Activity la fruta seleccionada, para usarla en onContextItemSelected
             val position = adapterPosition
             if (position != RecyclerView.NO_POSITION) {
-                val fruit = fruits[position]
-                activity.selectedFruit = fruit
+                activity.selectedFruit = fruits[position]
             }
         }
     }
@@ -52,6 +47,9 @@ class FruitAdapter(
         holder.textViewFat.text = "Grasas: ${fruit.nutritions.fat}"
         holder.textViewSugar.text = "Azúcar: ${fruit.nutritions.sugar}"
         holder.textViewCarbohydrates.text = "Carbohidratos: ${fruit.nutritions.carbohydrates}"
+
+        // Animación de desvanecimiento
+        setFadeAnimation(holder.itemView)
     }
 
     override fun getItemCount(): Int = fruits.size
@@ -59,5 +57,12 @@ class FruitAdapter(
     fun updateData(newFruits: List<Fruit>) {
         fruits = newFruits
         notifyDataSetChanged()
+    }
+
+    // Efecto fade in para cada ítem
+    private fun setFadeAnimation(view: View) {
+        val anim = AlphaAnimation(0.0f, 1.0f)
+        anim.duration = 700 // Duración en ms
+        view.startAnimation(anim)
     }
 }
