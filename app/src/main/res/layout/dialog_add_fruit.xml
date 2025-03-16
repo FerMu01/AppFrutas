@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp"
+    android:orientation="vertical">
+
+    <!-- Nombre de la fruta -->
+    <EditText
+        android:id="@+id/editTextName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nombre de la fruta" />
+
+    <!-- Calorías -->
+    <EditText
+        android:id="@+id/editTextCalories"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Calorías"
+        android:inputType="number" />
+
+    <!-- Grasas -->
+    <EditText
+        android:id="@+id/editTextFat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Grasas (g)"
+        android:inputType="numberDecimal" />
+
+    <!-- Azúcar -->
+    <EditText
+        android:id="@+id/editTextSugar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Azúcar (g)"
+        android:inputType="numberDecimal" />
+
+    <!-- Carbohidratos -->
+    <EditText
+        android:id="@+id/editTextCarbohydrates"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Carbohidratos (g)"
+        android:inputType="numberDecimal" />
+</LinearLayout>

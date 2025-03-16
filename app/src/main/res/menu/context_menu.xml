@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/option_add"
+        android:title="Agregar Fruta"
+        android:icon="@android:drawable/ic_input_add"/>
+
+    <item android:id="@+id/option_delete"
+        android:title="Eliminar Fruta"
+        android:icon="@android:drawable/ic_delete"/>
+</menu>
