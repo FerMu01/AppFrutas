@@ -58,6 +58,9 @@ class FruitAdapter(
         fruits = newFruits
         notifyDataSetChanged()
     }
+    fun getPositionOfFruit(fruit: Fruit): Int {
+        return fruits.indexOfFirst { it.id == fruit.id }
+    }
 
     // Efecto fade in para cada ítem
     private fun setFadeAnimation(view: View) {

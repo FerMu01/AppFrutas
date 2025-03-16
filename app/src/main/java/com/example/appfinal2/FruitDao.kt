@@ -15,6 +15,10 @@ interface FruitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertFruits(fruits: List<Fruit>)
 
+    // Inserta una fruta individual
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertFruit(fruit: Fruit)
+
     // Elimina una fruta
     @Delete
     fun deleteFruit(fruit: Fruit)
